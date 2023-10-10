@@ -1,0 +1,141 @@
+---
+title: "Free list analysis code"
+output: html_document
+date: "2023-10-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# loading package 
+```{r}
+pacman::p_load(tidyverse,ggplot2,readxl,AnthroTools)
+```
+
+```{r}
+# load the data
+FL <- read_excel("CDS_data.xlsx",sheet = 2) 
+FL <- as.data.frame(FL)
+```
+
+## Frequency plot
+```{r}
+TV.bin <- FreeListTable(FL,CODE = "ANIMALS.R",
+                        Order = "Order",
+                        Subj = "PARTID",
+                        tableType = "PRESENCE")
+
+SUM <- colSums(TV.bin[,2:ncol(TV.bin)]) # sums
+
+FREQ <- data.frame(SUM) # turn into dataframe
+
+newdata <- FREQ[order(-FREQ$SUM),,drop=F] # sort
+
+barplot(newdata$SUM,names.arg = rownames(newdata),las = 2) # plot
+```
+
+```{r}
+FL.S <- CalculateSalience(FL,
+                          CODE = "ANIMALS.R",
+                          Salience = "Salience",
+                          Subj = "PARTID",
+                          Order = "Order")
+model <- SalienceByCode(FL.S,
+                        CODE = "ANIMALS.R",
+                        Subj = "PARTID",
+                        Salience = "Salience",
+                        dealWithDoubles = "MAX")
+
+AnthroTools:::FlowerPlot(model,"Animals")
+```
+
+```{r}
+SAL.tab <- SalienceByCode(FL.S,
+                          CODE = "ANIMALS.R",
+                          Salience = "Salience",
+                          Subj = "PARTID",
+                          dealWithDoubles = "MAX")
+```
+
+# Function that spits it all out
+```{r}
+FreeListFunc <- function(data,sheet,code,subj,order,domaintitle){
+  FL <- as.data.frame(read_excel(data,sheet = sheet))
+  TV.bin <- FreeListTable(FL,CODE = code,
+                        Order = order,
+                        Subj = subj,
+                        tableType = "PRESENCE")
+
+  SUM <- colSums(TV.bin[,2:ncol(TV.bin)]) # sums
+
+  FREQ <- data.frame(SUM) # turn into dataframe
+
+  newdata <- FREQ[order(-FREQ$SUM),,drop=F] # sort
+
+  barplot(newdata$SUM,names.arg = rownames(newdata),las = 2) # plot
+  
+
+  FL.S <- CalculateSalience(FL,
+                          CODE = code,
+                          Salience = "Salience",
+                          Subj = subj,
+                          Order = order)
+
+  model <- SalienceByCode(FL.S,
+                        CODE = code,
+                        Subj = subj,
+                        Salience = "Salience",
+                        dealWithDoubles = "MAX")
+
+  AnthroTools:::FlowerPlot(model,domaintitle)
+
+  SAL.tab <- SalienceByCode(FL.S,
+                          CODE = code,
+                          Salience = "Salience",
+                          Subj = subj,
+                          dealWithDoubles = "MAX")
+}
+
+
+```
+
+```{r}
+# Animals data
+FreeListFunc("CDS_data.xlsx",2,"ANIMALS.R","PARTID","Order","Animals")
+
+# Hygge data
+FreeListFunc("CDS_data.xlsx",3,"HYGGE.R","PARTID","Order","Hygge Words")
+```
+
+## Now with MDS
+
+```{r}
+FreeListFuncMDS <- function(data,sheet,code,subj){
+  FL <- as.data.frame(read_excel(data,sheet = sheet))
+  FL.min <- FreeListTable(FL, CODE= code,
+                        Salience= "Salience",
+                        Subj= subj,
+                        tableType = "HIGHEST_RANK")
+  
+  FL.min$Subject <-NULL# delete ID's
+  
+  FL.dist<- dist(t(FL.min)) # Euclidean distance
+  
+  EuDistFL <- cmdscale(FL.dist, k = 2) # k is # of dims
+  
+  return(EuDistFL)
+}
+
+```
+
+```{r}
+# Animals data
+FreeListFuncMDS("CDS_data.xlsx",2,"ANIMALS.R","PARTID")
+
+# Hygge data
+FreeListFuncMDS("CDS_data.xlsx",3,"HYGGE.R","PARTID")
+```
+
+
+
